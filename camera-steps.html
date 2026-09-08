@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: sans-serif; text-align: center; }
+  #canvas { border: 1px solid black; max-width: 100%; }
+</style>
+</head>
+<body>
+<h2>Camera Step Counter (Fixed Camera, Side-on Walk)</h2>
+
+<video id="video" style="display:none;"></video>
+<canvas id="canvas" width="640" height="480"></canvas>
+<br>
+<button onclick="startTest()">Start 10s Camera Test</button>
+<p id="status">Waiting to start...</p>
+<p id="result"></p>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+<script>
+const videoElement = document.getElementById('video');
+const canvasElement = document.getElementById('canvas');
+const canvasCtx = canvasElement.getContext('2d');
+
+let ankleYHistory = [];
+let recording = false;
+
+const pose = new Pose({
+  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+});
+pose.setOptions({
+  modelComplexity: 1,
+  smoothLandmarks: true,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5
+});
+pose.onResults(onResults);
+
+function onResults(results) {
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+  if (results.poseLandmarks) {
+    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#00FF00', lineWidth: 2});
+    drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#FF0000', radius: 3});
+
+    if (recording) {
+      let ankle = results.poseLandmarks[27]; // left ankle
+      if (ankle) {
+        ankleYHistory.push({ y: ankle.y, t: Date.now() });
+      }
+    }
+  }
+  canvasCtx.restore();
+}
+
+const camera = new Camera(videoElement, {
+  onFrame: async () => { await pose.send({ image: videoElement }); },
+  width: 640,
+  height: 480
+});
+camera.start();
+
+function startTest() {
+  ankleYHistory = [];
+  recording = true;
+  document.getElementById("status").innerText = "Recording... walk sideways across the camera now";
+  document.getElementById("result").innerText = "";
+
+  setTimeout(() => {
+    recording = false;
+    document.getElementById("status").innerText = "Done. Frames captured: " + ankleYHistory.length;
+    let steps = countSteps();
+    document.getElementById("result").innerText = "Camera step count: " + steps;
+  }, 10000);
+}
+
+function countSteps() {
+  let ys = ankleYHistory.map(p => p.y);
+  let steps = 0;
+  // local minima in y = ankle at its highest point (mid-swing) = one step
+  for (let i = 2; i < ys.length - 2; i++) {
+    if (ys[i] < ys[i-1] && ys[i] < ys[i+1] && ys[i] < ys[i-2] && ys[i] < ys[i+2]) {
+      steps++;
+    }
+  }
+  return steps;
+}
+</script>
+</body>
+</html>
