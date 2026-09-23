@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="<%= csrfToken %>" />
+    <title>OA-Sentinel</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  </head>
+  <body>
+    <header class="top-bar">
+      <h1>OA-Sentinel</h1>
+      <form method="post" action="/logout">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="ghost-btn">Log out</button>
+      </form>
+    </header>
+
+    <main class="container">
+      <section class="card active-step" data-step="landing">
+        <h2>A calm, guided OA screening flow</h2>
+        <p>
+          This is a <strong>rule-based screening tool</strong> to support awareness and referral decisions. It does not claim
+          machine learning diagnosis.
+        </p>
+        <button class="primary-btn" data-next="patient-name">Start Screening</button>
+      </section>
+
+      <section class="card" data-step="patient-name">
+        <h2>Let's begin with the patient's name</h2>
+        <p class="subtext">We keep this simple and friendly.</p>
+        <label>Full name <input id="patientName" type="text" maxlength="80" required /></label>
+        <div class="actions"><button class="ghost-btn" data-prev="landing">Back</button><button class="primary-btn" data-next="patient-age">Continue</button></div>
+      </section>
+
+      <section class="card" data-step="patient-age">
+        <h2>How old is the patient?</h2>
+        <p class="subtext">Almost done with registration.</p>
+        <label>Age <input id="patientAge" type="number" min="1" max="120" required /></label>
+        <div class="actions"><button class="ghost-btn" data-prev="patient-name">Back</button><button class="primary-btn" data-next="patient-gender">Continue</button></div>
+      </section>
+
+      <section class="card" data-step="patient-gender">
+        <h2>What is the patient's gender?</h2>
+        <label>
+          Gender
+          <select id="patientGender" required>
+            <option value="">Select</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="other">Other</option>
+            <option value="prefer_not_to_say">Prefer not to say</option>
+          </select>
+        </label>
+        <div class="actions"><button class="ghost-btn" data-prev="patient-age">Back</button><button class="primary-btn" data-next="patient-contact">Continue</button></div>
+      </section>
+
+      <section class="card" data-step="patient-contact">
+        <h2>Best contact number?</h2>
+        <p class="subtext">This helps for follow-up if needed.</p>
+        <label>Contact <input id="patientContact" type="tel" maxlength="30" required /></label>
+        <div class="actions"><button class="ghost-btn" data-prev="patient-gender">Back</button><button class="primary-btn" data-next="medical-height">Continue</button></div>
+      </section>
+
+      <section class="card" data-step="medical-height">
+        <h2>Height and weight</h2>
+        <p class="subtext">This helps us understand movement better.</p>
+        <label>Height (cm) <input id="heightCm" type="number" min="50" max="250" required /></label>
+        <label>Weight (kg) <input id="weightKg" type="number" min="10" max="300" required /></label>
+        <p class="soft-note">BMI (auto): <strong id="bmiValue">--</strong></p>
+        <div class="actions"><button class="ghost-btn" data-prev="patient-contact">Back</button><button class="primary-btn" data-next="medical-pain">Continue</button></div>
+      </section>
+
+      <section class="card" data-step="medical-pain">
+        <h2>How strong is the pain today?</h2>
+        <p class="subtext">0 means no pain, 10 means severe pain.</p>
+        <label>
+          Pain scale: <span id="painScaleValue">5</span>
+          <input id="painScale" type="range" min="0" max="10" value="5" />
+        </label>
+        <div class="actions"><button class="ghost-btn" data-prev="medical-height">Back</button><button class="primary-btn" data-next="medical-stiffness">Continue</button></div>
+      </section>
+
+      <section class="card" data-step="medical-stiffness">
+        <h2>Any noticeable stiffness?</h2>
+        <label class="inline-choice"><input type="radio" name="stiffness" value="yes" /> Yes</label>
+        <label class="inline-choice"><input type="radio" name="stiffness" value="no" checked /> No</label>
+        <div class="actions"><button class="ghost-btn" data-prev="medical-pain">Back</button><button class="primary-btn" data-next="movement">Start Movement Tests</button></div>
+      </section>
+
+      <section class="card" data-step="movement">
+        <h2>Movement test station</h2>
+        <p class="subtext">We'll run squat, bend, and walk while camera + IMU capture together.</p>
+        <div class="movement-layout">
+          <canvas id="poseCanvas" width="640" height="400"></canvas>
+          <div class="movement-controls">
+            <button id="connectBleBtn" class="primary-btn" type="button">Connect IMU (BLE)</button>
+            <p id="bleStatus" class="soft-note">IMU not connected.</p>
+            <label>
+              Select test
+              <select id="testType">
+                <option value="squat">Squat</option>
+                <option value="bend">Bend</option>
+                <option value="walk">Walk</option>
+              </select>
+            </label>
+            <button id="startTestBtn" class="primary-btn" type="button">Record 12s Test</button>
+            <p id="testStatus" class="soft-note">Ready when you are.</p>
+          </div>
+        </div>
+        <div class="actions"><button class="ghost-btn" data-prev="medical-stiffness">Back</button><button class="primary-btn" data-next="results">See Results</button></div>
+      </section>
+
+      <section class="card" data-step="results">
+        <h2>Results graphs</h2>
+        <p class="subtext">Clear visuals for motion quality and stability.</p>
+        <div class="chart-grid">
+          <canvas id="kneeChart"></canvas>
+          <canvas id="imuRadarChart"></canvas>
+        </div>
+        <div class="actions"><button class="ghost-btn" data-prev="movement">Back</button><button class="primary-btn" data-next="risk">Compute OA Risk</button></div>
+      </section>
+
+      <section class="card" data-step="risk">
+        <h2>Rule-based OA risk output</h2>
+        <p class="subtext">Transparent and configurable with your clinical rules.</p>
+        <p class="risk-pill" id="riskOutput">Not computed yet</p>
+        <p id="riskMessage" class="soft-note"></p>
+        <button id="saveRecordBtn" class="primary-btn" type="button">Save Record</button>
+        <p id="saveStatus" class="soft-note"></p>
+        <div class="actions"><button class="ghost-btn" data-prev="results">Back</button><button class="primary-btn" data-next="awareness">Continue</button></div>
+      </section>
+
+      <section class="card" data-step="awareness">
+        <h2>OA awareness & education</h2>
+        <ul class="education-list">
+          <li><strong>Prevention:</strong> Keep joints active with low-impact movement most days.</li>
+          <li><strong>Joint care:</strong> Avoid sudden heavy loading; use proper posture while lifting.</li>
+          <li><strong>Exercise:</strong> Focus on quadriceps and hip strengthening plus flexibility.</li>
+          <li><strong>Nutrition:</strong> Balanced meals with protein, fiber, hydration, and weight management support.</li>
+        </ul>
+        <div class="actions"><button class="ghost-btn" data-prev="risk">Back</button><button class="primary-btn" data-next="history">View Patient History</button></div>
+      </section>
+
+      <section class="card" data-step="history">
+        <h2>Records history</h2>
+        <p class="subtext">Look up previous visits recorded by you.</p>
+        <div class="history-controls">
+          <input id="historySearch" type="text" placeholder="Search by patient name" />
+          <button id="historySearchBtn" class="primary-btn" type="button">Search</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Age</th>
+                <th>Gender</th>
+                <th>Contact</th>
+                <th>BMI</th>
+                <th>Pain</th>
+                <th>Stiffness</th>
+                <th>Risk %</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+        <div class="actions"><button class="ghost-btn" data-prev="awareness">Back</button><button class="primary-btn" data-next="landing">Start New Screening</button></div>
+      </section>
+    </main>
+
+    <video id="hiddenVideo" playsinline style="display:none;"></video>
+    <script src="/app.js"></script>
+  </body>
+</html>
