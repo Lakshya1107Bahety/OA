@@ -5,6 +5,7 @@ OA-Sentinel is a **rule-based OA screening web app** for health workers.
 ## Features implemented
 
 - Health worker email/password login with session-based auth.
+- Prototype session storage uses `express-session` default in-memory store (no native session DB dependency).
 - Guided screening flow:
   - Landing page + Start Screening
   - Patient registration
@@ -14,7 +15,7 @@ OA-Sentinel is a **rule-based OA screening web app** for health workers.
   - OA risk output from a configurable rule function
   - Awareness/education section
   - Patient history view tied to logged-in worker
-- SQLite database persistence for all screening records.
+- Patient records are persisted in SQLite through `better-sqlite3` synchronous access.
 
 ## Run locally
 

@@ -2,14 +2,12 @@ const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
-const SQLiteStoreFactory = require('connect-sqlite3');
 const bcrypt = require('bcryptjs');
 
 const { initDb, get, run, all } = require('./src/db');
 const { computeRiskScore } = require('./src/riskEngine');
 
 const app = express();
-const SQLiteStore = SQLiteStoreFactory(session);
 const PORT = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
@@ -21,7 +19,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(
   session({
-    store: new SQLiteStore({ db: 'sessions.db', dir: path.join(__dirname, 'data') }),
     secret: process.env.SESSION_SECRET || 'oa-sentinel-session-secret',
     resave: false,
     saveUninitialized: false,
@@ -72,19 +69,19 @@ app.get('/login', (req, res) => {
   return res.render('login', { error: null, csrfToken: req.session.csrfToken });
 });
 
-app.post('/login', async (req, res) => {
+app.post('/login', (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).render('login', { error: 'Please enter both email and password.', csrfToken: req.session.csrfToken });
   }
 
-  const worker = await get('SELECT id, email, password_hash FROM workers WHERE email = ?', [email.trim().toLowerCase()]);
+  const worker = get('SELECT id, email, password_hash FROM workers WHERE email = ?', [email.trim().toLowerCase()]);
   if (!worker) {
     return res.status(401).render('login', { error: 'Invalid credentials.', csrfToken: req.session.csrfToken });
   }
 
-  const isMatch = await bcrypt.compare(password, worker.password_hash);
+  const isMatch = bcrypt.compareSync(password, worker.password_hash);
   if (!isMatch) {
     return res.status(401).render('login', { error: 'Invalid credentials.', csrfToken: req.session.csrfToken });
   }
@@ -107,12 +104,12 @@ app.get('/sentinel', ensureAuth, (req, res) => {
   res.render('sentinel', { csrfToken: req.session.csrfToken });
 });
 
-app.get('/api/history', ensureAuth, async (req, res) => {
+app.get('/api/history', ensureAuth, (req, res) => {
   const searchText = (req.query.search || '').toString().trim();
   let rows;
 
   if (searchText) {
-    rows = await all(
+    rows = all(
       `
         SELECT id, patient_name, patient_age, patient_gender, patient_contact, bmi, pain_scale, stiffness, risk_score, recorded_at
         FROM screenings
@@ -122,7 +119,7 @@ app.get('/api/history', ensureAuth, async (req, res) => {
       [req.session.worker.id, `%${searchText}%`],
     );
   } else {
-    rows = await all(
+    rows = all(
       `
         SELECT id, patient_name, patient_age, patient_gender, patient_contact, bmi, pain_scale, stiffness, risk_score, recorded_at
         FROM screenings
@@ -137,7 +134,7 @@ app.get('/api/history', ensureAuth, async (req, res) => {
   return res.json({ rows });
 });
 
-app.post('/api/screenings', ensureAuth, async (req, res) => {
+app.post('/api/screenings', ensureAuth, (req, res) => {
   const { patient, medical, movement, imu, derived } = req.body;
 
   if (!patient || !medical || !movement || !imu || !derived) {
@@ -156,7 +153,7 @@ app.post('/api/screenings', ensureAuth, async (req, res) => {
 
   const risk = computeRiskScore(riskInput);
 
-  const result = await run(
+  const result = run(
     `
       INSERT INTO screenings (
         worker_id,
@@ -210,15 +207,14 @@ app.use((error, _req, res, _next) => {
   res.status(500).send('Something went wrong. Please try again.');
 });
 
-initDb()
-  .then(() => {
-    app.listen(PORT, () => {
-      // eslint-disable-next-line no-console
-      console.log(`OA-Sentinel running on http://localhost:${PORT}`);
-    });
-  })
-  .catch((error) => {
+try {
+  initDb();
+  app.listen(PORT, () => {
     // eslint-disable-next-line no-console
-    console.error('Failed to initialize app:', error);
-    process.exit(1);
+    console.log(`OA-Sentinel running on http://localhost:${PORT}`);
   });
+} catch (error) {
+  // eslint-disable-next-line no-console
+  console.error('Failed to initialize app:', error);
+  process.exit(1);
+}

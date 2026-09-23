@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 
 const dataDir = path.join(__dirname, '..', 'data');
@@ -9,46 +9,27 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const dbPath = path.join(dataDir, 'oa-sentinel.db');
-const db = new sqlite3.Database(dbPath);
+const db = new Database(dbPath);
+db.pragma('foreign_keys = ON');
 
 function run(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function runCallback(err) {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(this);
-      }
-    });
-  });
+  const result = db.prepare(sql).run(params);
+  return {
+    lastID: Number(result.lastInsertRowid),
+    changes: result.changes,
+  };
 }
 
 function get(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(row);
-      }
-    });
-  });
+  return db.prepare(sql).get(params);
 }
 
 function all(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(rows);
-      }
-    });
-  });
+  return db.prepare(sql).all(params);
 }
 
-async function initDb() {
-  await run(`
+function initDb() {
+  run(`
     CREATE TABLE IF NOT EXISTS workers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL UNIQUE,
@@ -57,7 +38,7 @@ async function initDb() {
     )
   `);
 
-  await run(`
+  run(`
     CREATE TABLE IF NOT EXISTS screenings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       worker_id INTEGER NOT NULL,
@@ -79,10 +60,10 @@ async function initDb() {
     )
   `);
 
-  const existingWorker = await get('SELECT id FROM workers WHERE email = ?', ['healthworker@oa.local']);
+  const existingWorker = get('SELECT id FROM workers WHERE email = ?', ['healthworker@oa.local']);
   if (!existingWorker) {
-    const passwordHash = await bcrypt.hash('sentinel123', 10);
-    await run('INSERT INTO workers (email, password_hash) VALUES (?, ?)', ['healthworker@oa.local', passwordHash]);
+    const passwordHash = bcrypt.hashSync('sentinel123', 10);
+    run('INSERT INTO workers (email, password_hash) VALUES (?, ?)', ['healthworker@oa.local', passwordHash]);
   }
 }
 
