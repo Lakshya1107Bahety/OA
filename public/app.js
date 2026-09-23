@@ -10,6 +10,7 @@ const historyBody = document.getElementById('historyBody');
 const riskOutput = document.getElementById('riskOutput');
 const riskMessage = document.getElementById('riskMessage');
 const saveStatus = document.getElementById('saveStatus');
+const csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.content || '';
 
 const hiddenVideo = document.getElementById('hiddenVideo');
 const poseCanvas = document.getElementById('poseCanvas');
@@ -367,7 +368,10 @@ async function saveRecord() {
 
   const response = await fetch('/api/screenings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-csrf-token': csrfToken,
+    },
     body: JSON.stringify(payload),
   });
 

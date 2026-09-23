@@ -1,4 +1,5 @@
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
 const SQLiteStoreFactory = require('connect-sqlite3');
@@ -27,11 +28,29 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: 'auto',
       maxAge: 1000 * 60 * 60 * 8,
     },
   }),
 );
+
+app.use((req, res, next) => {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+  }
+  res.locals.csrfToken = req.session.csrfToken;
+  next();
+});
+
+app.use((req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    const submittedToken = req.body?._csrf || req.get('x-csrf-token');
+    if (!submittedToken || submittedToken !== req.session.csrfToken) {
+      return res.status(403).send('Invalid CSRF token.');
+    }
+  }
+  return next();
+});
 
 function ensureAuth(req, res, next) {
   if (!req.session.worker) {
@@ -50,24 +69,24 @@ app.get('/login', (req, res) => {
     return res.redirect('/sentinel');
   }
 
-  return res.render('login', { error: null });
+  return res.render('login', { error: null, csrfToken: req.session.csrfToken });
 });
 
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).render('login', { error: 'Please enter both email and password.' });
+    return res.status(400).render('login', { error: 'Please enter both email and password.', csrfToken: req.session.csrfToken });
   }
 
   const worker = await get('SELECT id, email, password_hash FROM workers WHERE email = ?', [email.trim().toLowerCase()]);
   if (!worker) {
-    return res.status(401).render('login', { error: 'Invalid credentials.' });
+    return res.status(401).render('login', { error: 'Invalid credentials.', csrfToken: req.session.csrfToken });
   }
 
   const isMatch = await bcrypt.compare(password, worker.password_hash);
   if (!isMatch) {
-    return res.status(401).render('login', { error: 'Invalid credentials.' });
+    return res.status(401).render('login', { error: 'Invalid credentials.', csrfToken: req.session.csrfToken });
   }
 
   req.session.worker = {
@@ -84,8 +103,8 @@ app.post('/logout', ensureAuth, (req, res) => {
   });
 });
 
-app.get('/sentinel', ensureAuth, (_req, res) => {
-  res.render('sentinel');
+app.get('/sentinel', ensureAuth, (req, res) => {
+  res.render('sentinel', { csrfToken: req.session.csrfToken });
 });
 
 app.get('/api/history', ensureAuth, async (req, res) => {

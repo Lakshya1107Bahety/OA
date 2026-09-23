@@ -11,6 +11,7 @@
       <h1>OA-Sentinel</h1>
       <p class="subtext">Rule-based OA screening support for clinic teams.</p>
       <form method="post" action="/login" class="auth-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
         <label>
           Email
           <input type="email" name="email" required placeholder="healthworker@oa.local" />
