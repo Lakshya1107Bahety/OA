@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OA-Sentinel | Health Worker Login</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-card">
+      <h1>OA-Sentinel</h1>
+      <p class="subtext">Rule-based OA screening support for clinic teams.</p>
+      <form method="post" action="/login" class="auth-form">
+        <label>
+          Email
+          <input type="email" name="email" required placeholder="healthworker@oa.local" />
+        </label>
+        <label>
+          Password
+          <input type="password" name="password" required placeholder="••••••••" />
+        </label>
+        <% if (error) { %>
+        <p class="error"><%= error %></p>
+        <% } %>
+        <button type="submit" class="primary-btn">Log in</button>
+      </form>
+      <p class="helper-text">Demo worker: <strong>healthworker@oa.local / sentinel123</strong></p>
+    </main>
+  </body>
+</html>
