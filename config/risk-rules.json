@@ -24,3 +24,13 @@
     "high": 60
   }
 }
+{
+  "weights": [
+    { "key": "age", "weight": 0.3, "cap": 80 },
+    { "key": "bmi", "weight": 0.6, "cap": 40 },
+    { "key": "painScale", "weight": 3, "cap": 10 },
+    { "key": "stiffnessBinary", "weight": 15, "cap": 1 },
+    { "key": "strideVariability", "weight": 0.15, "cap": 100 },
+    { "key": "kneeRotation", "weight": 0.4, "cap": 90 }
+  ]
+}
