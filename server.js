@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
@@ -9,6 +10,19 @@ const { computeRiskScore } = require('./src/riskEngine');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const baselinePath = path.join(__dirname, 'config', 'baseline.json');
+
+function loadBaselineData() {
+  try {
+    const raw = fs.readFileSync(baselinePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_error) {
+    return [];
+  }
+}
+
+const baselineData = loadBaselineData();
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -149,6 +163,10 @@ app.post('/api/screenings', ensureAuth, (req, res) => {
     cadence: Number(imu.cadence ?? 0),
     strideVariability: Number(imu.strideVariability ?? 0),
     kneeRotation: Number(movement.kneeRotationAverage ?? 0),
+    userAge: Number(patient.age ?? 0),
+    liveAvgAngle: Number(movement.kneeRotationAverage ?? 0),
+    liveCadence: Number(imu.cadence ?? 0),
+    baseline: baselineData,
   };
 
   const risk = computeRiskScore(riskInput);
