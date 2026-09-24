@@ -1,4 +1,26 @@
 {
-  "description": "Rule-based OA screening configuration. Replace with clinician-approved logic.",
-  "weights": []
+  "ageThresholds": [
+    { "min": 45, "points": 15 },
+    { "min": 60, "points": 10 }
+  ],
+  "bmiThresholds": [
+    { "min": 25, "points": 15 },
+    { "min": 30, "points": 10 }
+  ],
+  "painPoints": 25,
+  "stiffnessPoints": 10,
+  "kneeROMDeviation": [
+    { "min": 10, "points": 20 },
+    { "min": 20, "points": 10 }
+  ],
+  "gaitSpeedDeviation": [
+    { "min": 15, "points": 10 }
+  ],
+  "squatLimitedDepthPoints": 8,
+  "squatPainPoints": 10,
+  "riskBands": {
+    "low": 0,
+    "moderate": 30,
+    "high": 60
+  }
 }
