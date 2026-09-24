@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "build:baseline": "node scripts/build-baseline.js"
   },
   "repository": {
     "type": "git",
@@ -21,6 +22,7 @@
     "better-sqlite3": "^13.0.3",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
-    "express-session": "^1.19.0"
+    "express-session": "^1.19.0",
+    "xlsx": "^0.18.5"
   }
 }
